@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokerdle</title>
+  <meta name="description" content="Guess the hidden hole cards from a real WSOP hand. A new hand every day.">
+  <link rel="canonical" href="https://pokerdle.net/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f1412">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://pokerdle.net/">
+  <meta property="og:title" content="Pokerdle: read the hand">
+  <meta property="og:description" content="A real World Series of Poker hand every day. Every card is face up but two. Can you read them?">
+  <meta name="twitter:card" content="summary">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto+Slab:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+    <h1>Poker<span>dle</span></h1>
+    <button class="icon-btn" id="statsBtn" aria-label="Statistics">▥</button>
+  </header>
+
+  <main>
+    <div class="hand-info" id="handInfo"></div>
+
+    <section class="table-wrap">
+      <div class="table" id="table">
+        <div class="board-area">
+          <div class="street-nav">
+            <button class="nav-btn" id="prevStreet" aria-label="Previous street">◀</button>
+            <span class="street-label" id="streetLabel"></span>
+            <button class="nav-btn" id="nextStreet" aria-label="Next street">▶</button>
+          </div>
+          <div class="board" id="board"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="street-actions" id="streetActions" aria-label="Betting on this street"></section>
+
+    <section class="guesses" id="guesses" aria-label="Your guesses"></section>
+
+    <section class="input-area" id="inputArea">
+      <div class="current-guess">
+        <span class="prompt" id="guessPrompt"></span>
+        <div class="slots" id="slots"></div>
+        <button class="submit" id="submitBtn" disabled>Guess</button>
+      </div>
+      <div class="picker" id="picker"></div>
+    </section>
+
+    <section class="result" id="result" hidden></section>
+  </main>
+
+  <div class="modal" id="helpModal" hidden>
+    <div class="modal-card">
+      <button class="close" data-close>×</button>
+      <h2>How to play</h2>
+      <p>Each day brings a real hand from the World Series of Poker. Every player's cards are face up except one. Guess that player's two hole cards.</p>
+      <p>You get one guess per street: <b>preflop</b>, <b>flop</b>, <b>draw</b> and <b>river</b>. After each guess the next street is dealt, along with its betting. Use the ◀ ▶ arrows on the table (or your arrow keys) to look back at earlier streets.</p>
+      <div class="legend">
+        <div class="legend-row">
+          <span class="legend-icon"><span class="mini card fb exact">A<i>♠</i></span></span>
+          <span class="legend-text"><b>Green:</b> right card. It locks in.</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-icon"><span class="mini card fb partial">7<i>♠</i></span></span>
+          <span class="legend-text"><b>Yellow outline:</b> right suit, wrong rank.</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-icon"><span class="mini card fb miss">4<i>♦</i></span></span>
+          <span class="legend-text"><b>Red outline:</b> wrong suit.</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-icon tags">
+            <span class="note-tag rank-hint"><span class="note-icon">▲</span><span class="note-text">Higher</span></span>
+            <span class="note-tag rank-hint"><span class="note-icon">▼</span><span class="note-text">Lower</span></span>
+            <span class="note-tag rank-right"><span class="note-icon">✓</span><span class="note-text">Right rank</span></span>
+          </span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-text">The card's color tells you about the <b>suit</b>. The tag beside the card tells you about the <b>rank</b>: whether the real card is <b>higher</b> or <b>lower</b> (aces high), or that you have the <b>right rank</b>.</span>
+        </div>
+      </div>
+      <p>Each column always tracks the same hidden card, so hints in one column all describe the same card.</p>
+      <p class="fine">Hands come from public tournament reporting. A source link appears after you finish.</p>
+    </div>
+  </div>
+
+  <div class="modal" id="statsModal" hidden>
+    <div class="modal-card">
+      <button class="close" data-close>×</button>
+      <h2>Statistics</h2>
+      <div id="statsBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/hands.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
