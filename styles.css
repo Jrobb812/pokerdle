@@ -393,6 +393,10 @@ main {
 .card.mini i { font-style: normal; }
 .legend .note-tag { min-width: 52px; flex: none; }
 .fine { color: var(--muted); font-size: 12px; }
+.fine a { color: var(--gold); }
+
+.site-footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 16px 32px; overflow-wrap: anywhere; }
+.site-footer a { color: var(--gold); }
 
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
 .stat .v { font-size: 28px; font-weight: 800; }
