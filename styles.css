@@ -402,9 +402,10 @@ main {
 .stat .v { font-size: 28px; font-weight: 800; }
 .stat .l { font-size: 12px; color: var(--muted); }
 .dist-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.dist-label { width: 60px; font-size: 13px; color: var(--muted); }
+.dist-label { flex: none; width: 60px; font-size: 13px; color: var(--muted); }
+.dist-track { flex: 1; min-width: 0; }
 .dist-bar.today { background: var(--green); }
-.dist-bar { background: var(--felt); color: #fff; font-weight: 800; font-size: 12px; padding: 2px 6px; border-radius: 4px; text-align: right; }
+.dist-bar { box-sizing: border-box; min-width: fit-content; background: var(--felt); color: #fff; font-weight: 800; font-size: 12px; padding: 2px 6px; border-radius: 4px; text-align: right; }
 
 .toast {
   position: fixed;
@@ -438,3 +439,5 @@ main {
   .picker-row { gap: 2px; }
   .row-label { width: 54px; font-size: 11px; }
 }
+
+.stats-share { display: block; margin: 16px auto 0; }

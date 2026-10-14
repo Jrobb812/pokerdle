@@ -581,10 +581,17 @@
       const today = !practice && state.status === "won" && state.guesses.length - 1 === i;
       const bar = el("div", "dist-bar" + (today ? " today" : ""), String(n));
       bar.style.width = Math.max(8, (n / max) * 100) + "%";
-      row.append(el("span", "dist-label", STREET_NAMES[STREETS[i]]), bar);
+      const track = el("div", "dist-track");
+      track.append(bar);
+      row.append(el("span", "dist-label", STREET_NAMES[STREETS[i]]), track);
       body.append(row);
     });
     if (!stats.played) body.append(el("p", "fine", "Play today's hand to start your streak. Stats are saved in this browser."));
+    if (state.status !== "playing") {
+      const shareBtn = el("button", "submit stats-share", "Share");
+      shareBtn.addEventListener("click", share);
+      body.append(shareBtn);
+    }
   }
 
   // ---------------------------------------------------------------------------
