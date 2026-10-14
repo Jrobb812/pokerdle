@@ -430,7 +430,7 @@
     });
 
     renderButtonSeat(table);
-    if (showEquity) renderEquity(table, folded);
+    if (showEquity) renderEquity(table);
 
     const board = $("board");
     board.innerHTML = "";
@@ -445,8 +445,14 @@
     $("table").classList.toggle("viewing-past", viewIndex < reachedIndex());
   }
 
-  function renderEquity(table, folded) {
-    const odds = equities(viewIndex, folded);
+  function renderEquity(table) {
+    // A player who folds on the viewed street still gets odds for it (what
+    // they gave up); only folds on earlier streets drop out.
+    const out = new Set();
+    for (const s of STREETS.slice(0, viewIndex)) {
+      for (const act of hand.streets[s] || []) if (act.a === "fold") out.add(act.p);
+    }
+    const odds = equities(viewIndex, out);
     if (Object.keys(odds).length < 2) return; // everyone else folded
     const guessing = state.status === "playing";
     for (const [i, x] of Object.entries(odds)) {
