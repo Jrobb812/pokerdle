@@ -488,6 +488,15 @@
 
   async function share() {
     const text = shareText();
+    // On phones, open the native share sheet (Messages, Messenger, etc.).
+    if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return; // closed the share sheet
+      }
+    }
     try {
       await navigator.clipboard.writeText(text);
     } catch {
