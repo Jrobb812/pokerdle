@@ -349,11 +349,22 @@
   const seatOrder = hand.players.map((_, i) => i);
   if (hand.dealer == null && hand.buttonSeat != null) seatOrder.splice(hand.buttonSeat, 0, "button");
 
+  // Phones are too narrow for seats beside the board, so there the other
+  // players sit in one row along the top rail, in clockwise order. These
+  // seats are placed by the top of their cards (see .table.rows in the CSS)
+  // so a row lines up even when only some seats have an action tag.
+  const narrow = matchMedia("(max-width: 560px)");
+  const TOP_ROW = { 1: [50], 2: [27, 73], 3: [17, 50, 83] };
+
   function seatPosition(seatIndex) {
     // Hidden player sits at the bottom; others continue clockwise.
     const n = seatOrder.length;
     const hiddenSeat = seatOrder.indexOf(hand.hidden);
-    const angle = Math.PI / 2 + ((seatIndex - hiddenSeat) * 2 * Math.PI) / n;
+    const step = (seatIndex - hiddenSeat + n) % n;
+    if (narrow.matches && TOP_ROW[n - 1]) {
+      return step === 0 ? { x: 50, y: 71 } : { x: TOP_ROW[n - 1][step - 1], y: -12 };
+    }
+    const angle = Math.PI / 2 + (step * 2 * Math.PI) / n;
     return { x: 50 + 44 * Math.cos(angle), y: 50 + 40 * Math.sin(angle) };
   }
 
@@ -373,6 +384,8 @@
   function renderTable() {
     const table = $("table");
     table.querySelectorAll(".seat").forEach((n) => n.remove());
+    table.classList.toggle("crowded", seatOrder.length > 2);
+    table.classList.toggle("rows", narrow.matches && seatOrder.length <= 4);
     const done = state.status !== "playing";
     const street = STREETS[viewIndex];
 
@@ -400,7 +413,10 @@
       });
       const plate = el("div", "plate");
       plate.dataset.player = i;
-      plate.append(el("div", "name", player.name), el("div", "pos", player.position));
+      const name = el("div", "name");
+      name.title = player.name;
+      name.append(el("span", "full-name", player.name), el("span", "short-name", shortName(player.name)));
+      plate.append(name, el("div", "pos", player.position));
       seat.append(cards, plate);
       if (i === hand.dealer) seat.append(el("div", "dealer-chip", "D"));
 
@@ -439,7 +455,7 @@
         badge.classList.add("unknown");
         badge.title = "Counts their hidden cards as unknown until you find them";
       }
-      table.querySelector('.plate[data-player="' + i + '"]').append(badge);
+      table.querySelector('.plate[data-player="' + i + '"] .pos').append(badge);
     }
   }
 
@@ -810,6 +826,7 @@
     save(EQUITY_KEY, showEquity);
     renderTable();
   });
+  narrow.addEventListener("change", renderTable);
   $("prevStreet").addEventListener("click", () => setView(viewIndex - 1));
   $("nextStreet").addEventListener("click", () => setView(viewIndex + 1));
   document.addEventListener("keydown", (e) => {

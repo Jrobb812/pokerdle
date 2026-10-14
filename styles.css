@@ -133,7 +133,7 @@ main {
 .note-tag.rank-right { background: rgba(63, 191, 111, 0.16); color: #6fdc96; border: 1px solid var(--green); }
 
 /* Table ------------------------------------------------------------------- */
-.table-wrap { padding: 54px 30px 64px; }
+.table-wrap { padding: 54px 30px 36px; }
 .table {
   position: relative;
   width: 100%;
@@ -184,6 +184,7 @@ main {
   white-space: nowrap;
 }
 .plate .name { font-weight: 800; font-size: 13px; }
+.plate .short-name { display: none; }
 .plate { position: relative; }
 .equity {
   position: absolute;
@@ -263,7 +264,7 @@ main {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: -6px 0 12px;
+  margin: 0 0 12px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
@@ -476,8 +477,15 @@ main {
 
 /* Phones ------------------------------------------------------------------ */
 @media (max-width: 560px) {
-  .table-wrap { padding: 48px 8px 60px; }
-  .table { aspect-ratio: 1.45 / 1; border-width: 9px; }
+  .table-wrap { padding: 44px 8px 40px; }
+  .table { aspect-ratio: 1.2 / 1; border-width: 9px; }
+  .plate { padding: 2px 7px; }
+  .table.rows .seat { transform: translate(-50%, 0); }
+  .table.crowded .plate .full-name { display: none; }
+  .table.crowded .plate .short-name { display: inline; }
+  .seat .dealer-chip { left: auto; right: -10px; top: -8px; margin: 0; width: 22px; height: 22px; font-size: 11px; }
+  .seat.empty-seat .dealer-chip { top: -8px; }
+  .bet { font-size: 11px; padding: 1px 7px; }
   .card { width: 36px; height: 50px; }
   .card .r { font-size: 16px; }
   .card .s { font-size: 15px; }
@@ -485,7 +493,7 @@ main {
   .seat .card .r { font-size: 14px; }
   .seat .card .s { font-size: 13px; }
   .plate .name { font-size: 11px; }
-  .equity { font-size: 10px; padding: 1px 4px; margin-right: 3px; }
+  .equity { position: static; transform: none; display: inline-block; margin: 0 0 0 4px; font-size: 10px; padding: 0 4px; }
   .board { gap: 3px; }
   .pick .r { font-size: 11px; }
   .pick .s { font-size: 10px; }
