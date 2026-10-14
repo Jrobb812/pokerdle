@@ -446,6 +446,7 @@
   }
 
   function renderEquity(table) {
+    if (STREETS[viewIndex] === "river") return; // the winner is already decided
     // A player who folds on the viewed street still gets odds for it (what
     // they gave up); only folds on earlier streets drop out.
     const out = new Set();
