@@ -157,6 +157,167 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Win percentages ("Show Percentages" switch)
+  //
+  // Each player still in the hand gets their chance to win from the viewed
+  // board, with ties split. Every card face up on the table is out of the
+  // deck, folded hands included. Until the hand is over, the hidden player's
+  // unfound cards count as unknown (dealt at random), so the odds never give
+  // the answer away.
+  const EQUITY_KEY = "pokerdle-show-equity";
+  const ITERATIONS = 20000;
+  let showEquity = load(EQUITY_KEY, false);
+  const equityCache = new Map();
+
+  const cardIndex = (code) => RANKS.indexOf(rankOf(code)) * 4 + SUIT_ORDER.indexOf(suitOf(code));
+
+  // Highest straight in a 13-bit rank mask (bit 12 = ace), or -1.
+  function topStraight(mask) {
+    const m = (mask << 1) | ((mask >> 12) & 1); // the ace also plays low
+    for (let hi = 13; hi >= 4; hi--) if (((m >> (hi - 4)) & 31) === 31) return hi - 1;
+    return -1;
+  }
+
+  function topBits(mask, n) {
+    const out = [];
+    for (let r = 12; r >= 0 && out.length < n; r--) if (mask & (1 << r)) out.push(r);
+    return out;
+  }
+
+  // Hand category, then up to five ranks, packed into one comparable number.
+  function packScore(cat, ranks) {
+    let v = cat;
+    for (let k = 0; k < 5; k++) v = v * 13 + (ranks[k] ?? 0);
+    return v;
+  }
+
+  // Best 5-card hand out of 7 cards (card = rank * 4 + suit).
+  const rankCount = new Int8Array(13);
+  const suitCount = new Int8Array(4);
+  const suitMask = new Int16Array(4);
+  function score7(cards) {
+    rankCount.fill(0);
+    suitCount.fill(0);
+    suitMask.fill(0);
+    let rankMask = 0;
+    for (const c of cards) {
+      const r = c >> 2, su = c & 3;
+      rankCount[r]++;
+      suitCount[su]++;
+      suitMask[su] |= 1 << r;
+      rankMask |= 1 << r;
+    }
+    let flush = -1;
+    for (let su = 0; su < 4; su++) if (suitCount[su] >= 5) flush = su;
+    if (flush >= 0) {
+      const sf = topStraight(suitMask[flush]);
+      if (sf >= 0) return packScore(8, [sf]);
+    }
+    let quad = -1;
+    const trips = [], pairs = [];
+    for (let r = 12; r >= 0; r--) {
+      if (rankCount[r] === 4) quad = r;
+      else if (rankCount[r] === 3) trips.push(r);
+      else if (rankCount[r] === 2) pairs.push(r);
+    }
+    if (quad >= 0) return packScore(7, [quad, ...topBits(rankMask & ~(1 << quad), 1)]);
+    if (trips.length > 1 || (trips.length && pairs.length)) {
+      return packScore(6, [trips[0], Math.max(trips[1] ?? -1, pairs[0] ?? -1)]);
+    }
+    if (flush >= 0) return packScore(5, topBits(suitMask[flush], 5));
+    const st = topStraight(rankMask);
+    if (st >= 0) return packScore(4, [st]);
+    if (trips.length) return packScore(3, [trips[0], ...topBits(rankMask & ~(1 << trips[0]), 2)]);
+    if (pairs.length >= 2) {
+      return packScore(2, [pairs[0], pairs[1], ...topBits(rankMask & ~(1 << pairs[0]) & ~(1 << pairs[1]), 1)]);
+    }
+    if (pairs.length) return packScore(1, [pairs[0], ...topBits(rankMask & ~(1 << pairs[0]), 3)]);
+    return packScore(0, topBits(rankMask, 5));
+  }
+
+  // Seeded random numbers, so the same board always shows the same odds.
+  function seededRandom(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // { playerIndex: chance to win (0-1) } for players who haven't folded.
+  function equities(streetIndex, folded) {
+    const done = state.status !== "playing";
+    const key = [streetIndex, done, derived.found.join()].join("|");
+    if (equityCache.has(key)) return equityCache.get(key);
+
+    // A hole card is unknown if it was mucked, or it's an unfound hidden card.
+    const known = (i, j) =>
+      hand.players[i].cards[j] !== "??" && (i !== hand.hidden || done || derived.found[j]);
+
+    const board = hand.board.slice(0, BOARD_COUNT[STREETS[streetIndex]]).map(cardIndex);
+    const dead = new Set(board);
+    hand.players.forEach((p, i) => p.cards.forEach((code, j) => known(i, j) && dead.add(cardIndex(code))));
+    const deck = [];
+    for (let c = 0; c < 52; c++) if (!dead.has(c)) deck.push(c);
+
+    const live = hand.players.map((_, i) => i).filter((i) => !folded.has(i));
+    const holes = live.map((i) => hand.players[i].cards.map((code, j) => (known(i, j) ? cardIndex(code) : null)));
+    const unknownHoles = holes.flat().filter((c) => c == null).length;
+    const missingBoard = 5 - board.length;
+    const sevens = holes.map(() => [...Array(2).fill(0), ...board, ...Array(missingBoard).fill(0)]);
+    const wins = new Float64Array(live.length);
+    let trials = 0;
+
+    // runout = the unknown hole cards in order, then the rest of the board.
+    function showdown(runout) {
+      let k = 0;
+      holes.forEach((h, p) => h.forEach((c, j) => (sevens[p][j] = c ?? runout[k++])));
+      for (let b = 0; b < missingBoard; b++) for (const s7 of sevens) s7[2 + board.length + b] = runout[k + b];
+      let best = -1, winners = [];
+      sevens.forEach((s7, p) => {
+        const v = score7(s7);
+        if (v > best) (best = v), (winners = [p]);
+        else if (v === best) winners.push(p);
+      });
+      for (const p of winners) wins[p] += 1 / winners.length;
+      trials++;
+    }
+
+    if (unknownHoles === 0 && missingBoard <= 2) {
+      // Few enough runouts to check every one.
+      if (missingBoard === 0) showdown([]);
+      else if (missingBoard === 1) deck.forEach((c) => showdown([c]));
+      else for (let a = 0; a < deck.length; a++) for (let b = a + 1; b < deck.length; b++) showdown([deck[a], deck[b]]);
+    } else {
+      let seed = streetIndex + 1;
+      for (const ch of hand.id) seed = (Math.imul(seed, 31) + ch.charCodeAt(0)) | 0;
+      const rand = seededRandom(seed);
+      const need = unknownHoles + missingBoard;
+      const pool = deck.slice();
+      for (let t = 0; t < ITERATIONS; t++) {
+        // Partial shuffle: the first `need` cards of the pool are a random draw.
+        for (let k = 0; k < need; k++) {
+          const r = k + Math.floor(rand() * (pool.length - k));
+          [pool[k], pool[r]] = [pool[r], pool[k]];
+        }
+        showdown(pool);
+      }
+    }
+
+    const result = {};
+    live.forEach((i, p) => (result[i] = wins[p] / trials));
+    equityCache.set(key, result);
+    return result;
+  }
+
+  function equityText(x) {
+    if (x > 0 && x < 0.005) return "<1%";
+    if (x < 1 && x > 0.995) return ">99%";
+    return Math.round(x * 100) + "%";
+  }
+
+  // ---------------------------------------------------------------------------
   // Rendering: cards
   function cardEl(code, extra) {
     const c = el("div", "card suit-" + suitOf(code) + (extra ? " " + extra : ""));
@@ -238,6 +399,7 @@
         }
       });
       const plate = el("div", "plate");
+      plate.dataset.player = i;
       plate.append(el("div", "name", player.name), el("div", "pos", player.position));
       seat.append(cards, plate);
       if (i === hand.dealer) seat.append(el("div", "dealer-chip", "D"));
@@ -252,6 +414,7 @@
     });
 
     renderButtonSeat(table);
+    if (showEquity) renderEquity(table, folded);
 
     const board = $("board");
     board.innerHTML = "";
@@ -264,6 +427,20 @@
     $("prevStreet").disabled = viewIndex === 0;
     $("nextStreet").disabled = viewIndex >= reachedIndex();
     $("table").classList.toggle("viewing-past", viewIndex < reachedIndex());
+  }
+
+  function renderEquity(table, folded) {
+    const odds = equities(viewIndex, folded);
+    if (Object.keys(odds).length < 2) return; // everyone else folded
+    const guessing = state.status === "playing";
+    for (const [i, x] of Object.entries(odds)) {
+      const badge = el("div", "equity", equityText(x));
+      if (+i === hand.hidden && guessing && !(derived.found[0] && derived.found[1])) {
+        badge.classList.add("unknown");
+        badge.title = "Counts their hidden cards as unknown until you find them";
+      }
+      table.querySelector('.plate[data-player="' + i + '"]').append(badge);
+    }
   }
 
   // One line under the table: the betting sequence on the viewed street.
@@ -627,6 +804,12 @@
   $("helpBtn").addEventListener("click", () => openModal("helpModal"));
   $("statsBtn").addEventListener("click", () => openModal("statsModal"));
   $("submitBtn").addEventListener("click", submit);
+  $("equityToggle").checked = showEquity;
+  $("equityToggle").addEventListener("change", (e) => {
+    showEquity = e.target.checked;
+    save(EQUITY_KEY, showEquity);
+    renderTable();
+  });
   $("prevStreet").addEventListener("click", () => setView(viewIndex - 1));
   $("nextStreet").addEventListener("click", () => setView(viewIndex + 1));
   document.addEventListener("keydown", (e) => {

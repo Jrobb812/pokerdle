@@ -184,6 +184,23 @@ main {
   white-space: nowrap;
 }
 .plate .name { font-weight: 800; font-size: 13px; }
+.plate { position: relative; }
+.equity {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(10, 14, 12, 0.92);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.equity.unknown { border-style: dashed; }
 .plate .pos { font-size: 11px; color: var(--muted); }
 .hidden-seat .plate { border-color: var(--gold); box-shadow: 0 0 12px rgba(233, 196, 106, 0.35); }
 /* Inset border so neighbouring revealed cards never overlap */
@@ -240,6 +257,41 @@ main {
 .nav-btn:disabled { opacity: 0.2; cursor: default; }
 .table.viewing-past .street-label { color: var(--gold); }
 .table.viewing-past .street-label::after { content: " (earlier)"; letter-spacing: 1px; font-size: 10px; }
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: -6px 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.switch-row input { position: absolute; opacity: 0; pointer-events: none; }
+.switch {
+  position: relative;
+  width: 36px; height: 20px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid #3a4540;
+  transition: background 0.15s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.switch-row input:checked + .switch { background: var(--felt); border-color: var(--green); }
+.switch-row input:checked + .switch::after { transform: translateX(16px); background: #fff; }
+.switch-row input:focus-visible + .switch { outline: 2px solid var(--gold); outline-offset: 2px; }
+.switch-row:has(input:checked) { color: var(--text); }
 
 .street-actions {
   display: flex;
@@ -433,6 +485,7 @@ main {
   .seat .card .r { font-size: 14px; }
   .seat .card .s { font-size: 13px; }
   .plate .name { font-size: 11px; }
+  .equity { font-size: 10px; padding: 1px 4px; margin-right: 3px; }
   .board { gap: 3px; }
   .pick .r { font-size: 11px; }
   .pick .s { font-size: 10px; }
