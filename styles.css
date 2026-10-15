@@ -313,27 +313,44 @@ main {
   cursor: pointer;
 }
 .info-btn:hover, .info-btn:focus-visible, .info-btn[aria-expanded="true"] { color: var(--text); border-color: var(--text); }
+/* Speech bubble to the right of the "?" */
+.info-wrap { position: relative; display: inline-flex; }
 .info-tip {
   display: none;
   position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(280px, calc(100vw - 32px));
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+  width: 220px;
   padding: 8px 10px;
   border-radius: 8px;
   background: var(--panel-2);
   border: 1px solid #3a4540;
   color: var(--text);
   font-size: 12px;
+  font-weight: 400;
   line-height: 1.4;
-  text-align: center;
+  text-align: left;
   z-index: 20;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 }
+.info-tip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-right-color: #3a4540;
+}
 .info-tip.open { display: block; }
 @media (hover: hover) {
-  .info-btn:hover + .info-tip { display: block; }
+  .info-wrap:hover .info-tip { display: block; }
+}
+/* Phones: line the switch up on the left so the bubble fits beside it */
+@media (max-width: 560px) {
+  .easy-row { justify-content: flex-start; padding-left: 4px; }
+  .info-tip { width: min(220px, calc(100vw - 200px)); }
 }
 .easy-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 .easy-actions .submit { margin: 0; }
