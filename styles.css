@@ -201,7 +201,6 @@ main {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-.equity.unknown { border-style: dashed; }
 .plate .pos { font-size: 11px; color: var(--muted); }
 .hidden-seat .plate { border-color: var(--gold); box-shadow: 0 0 12px rgba(233, 196, 106, 0.35); }
 /* Inset border so neighbouring revealed cards never overlap */
@@ -297,6 +296,15 @@ main {
 .switch-row input:checked + .switch::after { transform: translateX(16px); background: #fff; }
 .switch-row input:focus-visible + .switch { outline: 2px solid var(--gold); outline-offset: 2px; }
 .switch-row:has(input:checked) { color: var(--text); }
+.switch-row.in-help { justify-content: flex-start; margin: 4px 0 12px; }
+
+/* Colorblind mode: orange = right card, blue = right suit, gray = wrong suit */
+.cb { display: none; }
+html.colorblind .cb { display: inline; }
+html.colorblind .std { display: none; }
+html.colorblind { --green: #f5793a; --yellow: #85c0f9; }
+html.colorblind .card.fb.miss { outline-color: #7d8580; }
+html.colorblind .note-tag.rank-right { background: rgba(245, 121, 58, 0.16); color: #f8a275; border-color: #f5793a; }
 
 .street-actions {
   display: flex;

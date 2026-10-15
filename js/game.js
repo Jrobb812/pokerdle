@@ -160,13 +160,12 @@
   // Win percentages ("Show Percentages" switch)
   //
   // Each player still in the hand gets their chance to win from the viewed
-  // board, with ties split. Every card face up on the table is out of the
-  // deck, folded hands included. Until the hand is over, the hidden player's
-  // unfound cards count as unknown (dealt at random), so the odds never give
-  // the answer away.
-  const EQUITY_KEY = "pokerdle-show-equity";
+  // board, with ties split, using everyone's real cards (the hidden player's
+  // too, so the odds can hint at the answer; that's why the switch starts off
+  // on every visit). Every card on the table is out of the deck, folded hands
+  // included.
   const ITERATIONS = 20000;
-  let showEquity = load(EQUITY_KEY, false);
+  let showEquity = false;
   const equityCache = new Map();
 
   const cardIndex = (code) => RANKS.indexOf(rankOf(code)) * 4 + SUIT_ORDER.indexOf(suitOf(code));
@@ -247,13 +246,11 @@
 
   // { playerIndex: chance to win (0-1) } for players who haven't folded.
   function equities(streetIndex, folded) {
-    const done = state.status !== "playing";
-    const key = [streetIndex, done, derived.found.join()].join("|");
+    const key = streetIndex + "|" + [...folded].join();
     if (equityCache.has(key)) return equityCache.get(key);
 
-    // A hole card is unknown if it was mucked, or it's an unfound hidden card.
-    const known = (i, j) =>
-      hand.players[i].cards[j] !== "??" && (i !== hand.hidden || done || derived.found[j]);
+    // Mucked cards ("??") are the only unknown hole cards.
+    const known = (i, j) => hand.players[i].cards[j] !== "??";
 
     const board = hand.board.slice(0, BOARD_COUNT[STREETS[streetIndex]]).map(cardIndex);
     const dead = new Set(board);
@@ -455,13 +452,8 @@
     }
     const odds = equities(viewIndex, out);
     if (Object.keys(odds).length < 2) return; // everyone else folded
-    const guessing = state.status === "playing";
     for (const [i, x] of Object.entries(odds)) {
       const badge = el("div", "equity", equityText(x));
-      if (+i === hand.hidden && guessing && !(derived.found[0] && derived.found[1])) {
-        badge.classList.add("unknown");
-        badge.title = "Counts their hidden cards as unknown until you find them";
-      }
       table.querySelector('.plate[data-player="' + i + '"] .pos').append(badge);
     }
   }
@@ -680,9 +672,10 @@
 
   const SITE_URL = "pokerdle.net";
   const SHARE_ICON = { exact: "🟩", partial: "🟨", miss: "🟥" };
+  const SHARE_ICON_CB = { exact: "🟧", partial: "🟦", miss: "⬛" };
   function shareText() {
     const score = state.status === "won" ? state.guesses.length + "/4" : "X/4";
-    const rows = derived.feedback.map((row) => row.map((r) => SHARE_ICON[r.kind]).join(""));
+    const rows = derived.feedback.map((row) => row.map((r) => (colorblind ? SHARE_ICON_CB : SHARE_ICON)[r.kind]).join(""));
     return ["Pokerdle " + (practice ? "practice" : "#" + puzzleNumber) + " " + score, ...rows, SITE_URL].join("\n");
   }
 
@@ -824,14 +817,28 @@
       if (e.target === m || e.target.hasAttribute("data-close")) m.hidden = true;
     });
   });
+  // Colorblind mode swaps green / yellow / red for orange / blue / gray
+  // (see html.colorblind in the CSS). Remembered in this browser.
+  const COLORBLIND_KEY = "pokerdle-colorblind";
+  let colorblind = load(COLORBLIND_KEY, false);
+  function applyColorblind() {
+    document.documentElement.classList.toggle("colorblind", colorblind);
+  }
+  applyColorblind();
+
   $("helpBtn").addEventListener("click", () => openModal("helpModal"));
   $("statsBtn").addEventListener("click", () => openModal("statsModal"));
   $("submitBtn").addEventListener("click", submit);
-  $("equityToggle").checked = showEquity;
+  $("equityToggle").checked = false;
   $("equityToggle").addEventListener("change", (e) => {
     showEquity = e.target.checked;
-    save(EQUITY_KEY, showEquity);
     renderTable();
+  });
+  $("colorblindToggle").checked = colorblind;
+  $("colorblindToggle").addEventListener("change", (e) => {
+    colorblind = e.target.checked;
+    save(COLORBLIND_KEY, colorblind);
+    applyColorblind();
   });
   narrow.addEventListener("change", renderTable);
   $("prevStreet").addEventListener("click", () => setView(viewIndex - 1));

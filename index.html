@@ -76,15 +76,15 @@
       <div class="legend">
         <div class="legend-row">
           <span class="legend-icon"><span class="mini card fb exact">A<i>♠</i></span></span>
-          <span class="legend-text"><b>Green:</b> right card. It locks in.</span>
+          <span class="legend-text"><b><span class="std">Green</span><span class="cb">Orange</span>:</b> right card. It locks in.</span>
         </div>
         <div class="legend-row">
           <span class="legend-icon"><span class="mini card fb partial">7<i>♠</i></span></span>
-          <span class="legend-text"><b>Yellow outline:</b> right suit, wrong rank.</span>
+          <span class="legend-text"><b><span class="std">Yellow</span><span class="cb">Blue</span> outline:</b> right suit, wrong rank.</span>
         </div>
         <div class="legend-row">
           <span class="legend-icon"><span class="mini card fb miss">4<i>♦</i></span></span>
-          <span class="legend-text"><b>Red outline:</b> wrong suit.</span>
+          <span class="legend-text"><b><span class="std">Red</span><span class="cb">Gray</span> outline:</b> wrong suit.</span>
         </div>
         <div class="legend-row">
           <span class="legend-icon tags">
@@ -98,6 +98,11 @@
         </div>
       </div>
       <p>Each column always tracks the same hidden card, so hints in one column all describe the same card.</p>
+      <label class="switch-row in-help">
+        <input type="checkbox" id="colorblindToggle" role="switch">
+        <span class="switch" aria-hidden="true"></span>
+        Colorblind mode
+      </label>
       <p class="fine">Hands come from public tournament reporting. A source link appears after you finish.</p>
       <p class="fine">Bugs or suggestions? Email <a href="mailto:pokerdledotnet@gmail.com?subject=Pokerdle%20feedback">pokerdledotnet@gmail.com</a>.</p>
     </div>
