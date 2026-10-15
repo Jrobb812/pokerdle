@@ -648,11 +648,14 @@
     stats.played += 1;
     if (state.status === "won") {
       stats.won += 1;
+      stats.dist[state.guesses.length - 1] += 1;
+    }
+    if (state.status === "won" && !state.easy) {
       stats.streak = stats.lastWinDay === dayIndex - 1 ? stats.streak + 1 : 1;
       stats.maxStreak = Math.max(stats.maxStreak, stats.streak);
-      stats.dist[state.guesses.length - 1] += 1;
       stats.lastWinDay = dayIndex;
     } else {
+      // A loss, or a hand played with Easy Mode, resets the streak.
       stats.streak = 0;
     }
     stats.lastDay = dayIndex;
@@ -671,12 +674,19 @@
   }
 
   const SITE_URL = "pokerdle.net";
-  const SHARE_ICON = { exact: "🟩", partial: "🟨", miss: "🟥" };
-  const SHARE_ICON_CB = { exact: "🟧", partial: "🟦", miss: "⬛" };
+  // Green = right card, yellow = right suit or right rank, red = neither.
+  const SHARE_ICON = { exact: "🟩", close: "🟨", miss: "🟥" };
+  const SHARE_ICON_CB = { exact: "🟧", close: "🟦", miss: "⬛" };
+  function shareIcon(r) {
+    const icons = colorblind ? SHARE_ICON_CB : SHARE_ICON;
+    if (r.kind === "exact") return icons.exact;
+    return r.kind === "partial" || r.note === "rank" ? icons.close : icons.miss;
+  }
   function shareText() {
     const score = state.status === "won" ? state.guesses.length + "/4" : "X/4";
-    const rows = derived.feedback.map((row) => row.map((r) => (colorblind ? SHARE_ICON_CB : SHARE_ICON)[r.kind]).join(""));
-    return ["Pokerdle " + (practice ? "practice" : "#" + puzzleNumber) + " " + score, ...rows, SITE_URL].join("\n");
+    const rows = derived.feedback.map((row) => row.map(shareIcon).join(""));
+    const title = "Pokerdle " + (practice ? "practice" : "#" + puzzleNumber) + " " + score + (state.easy ? " (Easy Mode)" : "");
+    return [title, ...rows, SITE_URL].join("\n");
   }
 
   async function share() {
@@ -715,7 +725,11 @@
     box.append(el("h2", won ? "win" : "lose", won ? "You read them!" : "Not this time"));
     if (!practice) {
       const streak = currentStreak(loadStats());
-      box.append(el("div", "streak-line", streak > 0 ? "🔥 " + streak + "-day streak" : "Streak reset. Start a new one tomorrow."));
+      if (state.easy) {
+        box.append(el("div", "streak-line easy", "Played with Easy Mode, so this hand doesn't count toward your streak."));
+      } else {
+        box.append(el("div", "streak-line", streak > 0 ? "🔥 " + streak + "-day streak" : "Streak reset. Start a new one tomorrow."));
+      }
     }
 
     const reveal = el("div", "reveal");
@@ -829,10 +843,43 @@
   $("helpBtn").addEventListener("click", () => openModal("helpModal"));
   $("statsBtn").addEventListener("click", () => openModal("statsModal"));
   $("submitBtn").addEventListener("click", submit);
+  // Easy Mode (win percentages). Turning it on during an unfinished daily
+  // hand marks the hand as Easy Mode, so it asks first.
+  function setEasy(on) {
+    showEquity = on;
+    $("equityToggle").checked = on;
+    if (on && state.status === "playing" && !state.easy) {
+      state.easy = true;
+      persist();
+    }
+    renderTable();
+  }
   $("equityToggle").checked = false;
   $("equityToggle").addEventListener("change", (e) => {
-    showEquity = e.target.checked;
-    renderTable();
+    const needsWarning = e.target.checked && !practice && state.status === "playing" && !state.easy;
+    if (needsWarning) {
+      e.target.checked = false;
+      openModal("easyModal");
+      return;
+    }
+    setEasy(e.target.checked);
+  });
+  $("easyConfirm").addEventListener("click", () => {
+    $("easyModal").hidden = true;
+    setEasy(true);
+  });
+
+  // "?" tooltip: hover on desktop, tap to open/close on touch screens
+  const easyTip = $("easyInfo");
+  $("easyInfoBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = !easyTip.classList.contains("open");
+    easyTip.classList.toggle("open", open);
+    $("easyInfoBtn").setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("click", () => {
+    easyTip.classList.remove("open");
+    $("easyInfoBtn").setAttribute("aria-expanded", "false");
   });
   $("colorblindToggle").checked = colorblind;
   $("colorblindToggle").addEventListener("change", (e) => {

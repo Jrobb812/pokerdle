@@ -41,11 +41,15 @@
       </div>
     </section>
 
-    <label class="switch-row">
-      <input type="checkbox" id="equityToggle" role="switch">
-      <span class="switch" aria-hidden="true"></span>
-      Show Percentages
-    </label>
+    <div class="easy-row">
+      <label class="switch-row">
+        <input type="checkbox" id="equityToggle" role="switch">
+        <span class="switch" aria-hidden="true"></span>
+        Easy Mode
+      </label>
+      <button class="info-btn" id="easyInfoBtn" type="button" aria-label="What is Easy Mode?" aria-describedby="easyInfo">?</button>
+      <div class="info-tip" id="easyInfo" role="tooltip">Shows each player's chance of winning the hand on every street. Hands played with Easy Mode don't count toward your streak.</div>
+    </div>
 
     <section class="street-actions" id="streetActions" aria-label="Betting on this street"></section>
 
@@ -105,6 +109,18 @@
       </label>
       <p class="fine">Hands come from public tournament reporting. A source link appears after you finish.</p>
       <p class="fine">Bugs or suggestions? Email <a href="mailto:pokerdledotnet@gmail.com?subject=Pokerdle%20feedback">pokerdledotnet@gmail.com</a>.</p>
+    </div>
+  </div>
+
+  <div class="modal" id="easyModal" hidden>
+    <div class="modal-card easy-card">
+      <h2>Turn on Easy Mode?</h2>
+      <p>Easy Mode shows each player's chance of winning the hand on every street.</p>
+      <p><b>Today's hand won't count toward your streak</b>, and your current streak will reset. Your result will be shared as Easy Mode.</p>
+      <div class="easy-actions">
+        <button class="submit" id="easyConfirm" type="button">Turn on Easy Mode</button>
+        <button class="ghost-btn" type="button" data-close>Cancel</button>
+      </div>
     </div>
   </div>
 
