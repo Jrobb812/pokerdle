@@ -14,6 +14,8 @@
   const SUIT_ORDER = ["s", "h", "d", "c"];
   const STATE_KEY = "pokerdle-state-v1";
   const STATS_KEY = "pokerdle-stats-v1";
+  const ARCHIVE_KEY = "pokerdle-archive-v1";
+  const ARCHIVE_DAYS = 30; // how many past days the archive offers
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -78,8 +80,17 @@
   const params = new URLSearchParams(location.search);
   const practiceHand = params.has("hand") ? parseInt(params.get("hand"), 10) : null;
   const practice = practiceHand != null && !Number.isNaN(practiceHand);
-  const dayIndex = todayIndex();
+  // ?day=N opens puzzle #N from the archive (one of the last ARCHIVE_DAYS days).
+  // Archive hands never touch the streak.
+  const todayDay = todayIndex();
+  const requestedDay = params.has("day") ? parseInt(params.get("day"), 10) - 1 : null;
+  const archive = !practice && requestedDay != null && requestedDay < todayDay && requestedDay >= Math.max(0, todayDay - ARCHIVE_DAYS);
+  if (!practice && !archive && params.has("day")) history.replaceState(null, "", location.pathname);
+  const dayIndex = archive ? requestedDay : todayDay;
   const puzzleNumber = dayIndex + 1;
+  function dateLabel(day) {
+    return new Date(EPOCH + day * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  }
   const hand = practice
     ? window.HANDS[((practiceHand % window.HANDS.length) + window.HANDS.length) % window.HANDS.length]
     : window.HANDS[dayIndex % window.HANDS.length];
@@ -139,7 +150,17 @@
 
   // ---------------------------------------------------------------------------
   // State
-  let state = practice ? null : load(STATE_KEY, null);
+  // Archive progress is kept per day. An unfinished daily hand from that day
+  // carries over into the archive.
+  const archiveStates = load(ARCHIVE_KEY, {});
+  let state = null;
+  if (archive) {
+    state = archiveStates[dayIndex];
+    const daily = load(STATE_KEY, null);
+    if (!state && daily && daily.day === dayIndex && daily.status === "playing") state = daily;
+  } else if (!practice) {
+    state = load(STATE_KEY, null);
+  }
   if (!state || state.day !== dayIndex || state.handId !== hand.id) {
     state = { day: dayIndex, handId: hand.id, guesses: [], status: "playing" };
   }
@@ -153,7 +174,11 @@
   let viewIndex = reachedIndex();
 
   function persist() {
-    if (!practice) save(STATE_KEY, state);
+    if (practice) return;
+    if (!archive) return save(STATE_KEY, state);
+    archiveStates[dayIndex] = state;
+    for (const d of Object.keys(archiveStates)) if (d < todayDay - ARCHIVE_DAYS) delete archiveStates[d];
+    save(ARCHIVE_KEY, archiveStates);
   }
 
   // ---------------------------------------------------------------------------
@@ -333,7 +358,7 @@
     const info = $("handInfo");
     info.innerHTML = "";
     info.append(
-      el("div", "num", practice ? "Practice hand" : "#" + puzzleNumber),
+      el("div", "num", practice ? "Practice hand" : archive ? "Archive • #" + puzzleNumber + " • " + dateLabel(dayIndex) : "#" + puzzleNumber),
       el("div", "event", hand.event),
       el("div", "sub", [hand.stage, hand.blinds].filter(Boolean).join(" • "))
     );
@@ -641,14 +666,22 @@
 
   // ---------------------------------------------------------------------------
   // Results, sharing and stats
+  // A day counts toward the stats once, whether it was played on the day or
+  // later from the archive. Only the daily hand affects the streak.
   function recordResult() {
     if (practice) return;
     const stats = loadStats();
-    if (stats.lastDay === dayIndex) return;
+    if (stats.days[dayIndex] != null) return;
     stats.played += 1;
     if (state.status === "won") {
       stats.won += 1;
       stats.dist[state.guesses.length - 1] += 1;
+    }
+    stats.days[dayIndex] = state.status === "won" ? state.guesses.length : 0;
+    state.counted = true;
+    if (archive) {
+      save(STATS_KEY, stats);
+      return;
     }
     if (state.status === "won" && !state.easy) {
       stats.streak = stats.lastWinDay === dayIndex - 1 ? stats.streak + 1 : 1;
@@ -662,15 +695,24 @@
     save(STATS_KEY, stats);
   }
 
-  const EMPTY_STATS = { played: 0, won: 0, streak: 0, maxStreak: 0, dist: [0, 0, 0, 0], lastDay: null, lastWinDay: null };
+  // days: day index -> guesses used to win, 0 for a loss, -1 for a day played
+  // before results were kept per day.
+  const EMPTY_STATS = { played: 0, won: 0, streak: 0, maxStreak: 0, dist: [0, 0, 0, 0], lastDay: null, lastWinDay: null, days: null };
 
   function loadStats() {
-    return { ...EMPTY_STATS, ...load(STATS_KEY, {}) };
+    const stats = { ...EMPTY_STATS, ...load(STATS_KEY, {}) };
+    if (!stats.days) {
+      // Older saves only remember the last day played and the current streak.
+      stats.days = {};
+      if (stats.lastWinDay != null) for (let d = stats.lastWinDay - stats.streak + 1; d <= stats.lastWinDay; d++) stats.days[d] = -1;
+      if (stats.lastDay != null && stats.days[stats.lastDay] == null) stats.days[stats.lastDay] = -1;
+    }
+    return stats;
   }
 
   // The saved streak only counts if the last win was today or yesterday.
   function currentStreak(stats) {
-    return stats.lastWinDay != null && stats.lastWinDay >= dayIndex - 1 ? stats.streak : 0;
+    return stats.lastWinDay != null && stats.lastWinDay >= todayDay - 1 ? stats.streak : 0;
   }
 
   const SITE_URL = "pokerdle.net";
@@ -685,7 +727,7 @@
   function shareText() {
     const score = state.status === "won" ? state.guesses.length + "/4" : "X/4";
     const rows = derived.feedback.map((row) => row.map(shareIcon).join(""));
-    const title = "Pokerdle " + (practice ? "practice" : "#" + puzzleNumber) + " " + score + (state.easy ? " (Easy Mode)" : "");
+    const title = "Pokerdle " + (practice ? "practice" : "#" + puzzleNumber + (archive ? " (archive)" : "")) + " " + score + (state.easy ? " (Easy Mode)" : "");
     return [title, ...rows, SITE_URL].join("\n");
   }
 
@@ -723,7 +765,10 @@
     box.innerHTML = "";
     const won = state.status === "won";
     box.append(el("h2", won ? "win" : "lose", won ? "You read them!" : "Not this time"));
-    if (!practice) {
+    if (archive) {
+      const counted = state.counted ? "It was added to your stats." : "You'd already played this day, so your stats didn't change.";
+      box.append(el("div", "streak-line easy", "Archive hands don't count toward your streak. " + counted));
+    } else if (!practice) {
       const streak = currentStreak(loadStats());
       if (state.easy) {
         box.append(el("div", "streak-line easy", "Played with Easy Mode, so this hand doesn't count toward your streak."));
@@ -759,7 +804,13 @@
     const shareBtn = el("button", "submit", "Share");
     shareBtn.addEventListener("click", share);
     actions.append(shareBtn);
-    if (!practice) {
+    if (archive) {
+      const more = el("button", "ghost-btn", "More from the archive");
+      more.addEventListener("click", () => openModal("archiveModal"));
+      const today = el("a", "ghost-btn", "Today's hand");
+      today.href = "./";
+      actions.append(more, today);
+    } else if (!practice) {
       const next = el("div", "countdown");
       actions.append(next);
       const tick = () => {
@@ -810,6 +861,37 @@
     }
   }
 
+  // Today plus the last ARCHIVE_DAYS days, newest first, with how each one went.
+  function renderArchive() {
+    const body = $("archiveBody");
+    body.innerHTML = "";
+    const stats = loadStats();
+    const states = load(ARCHIVE_KEY, {});
+    const daily = load(STATE_KEY, null);
+    const list = el("div", "archive-list");
+    const row = (href, num, date, status, cls, current) => {
+      const a = el("a", "archive-row" + (current ? " current" : ""));
+      a.href = href;
+      a.append(el("span", "archive-num", num), el("span", "archive-date", date), el("span", "archive-status " + cls, status));
+      list.append(a);
+    };
+    const describe = (r, s) => {
+      if (r > 0) return ["Solved " + r + "/4", "won"];
+      if (r === 0) return ["Missed", "lost"];
+      if (r === -1) return ["Played", "done"];
+      if (s && s.guesses.length) return ["In progress", "progress"];
+      return ["Not played", "new"];
+    };
+    const [todayStatus, todayCls] = describe(stats.days[todayDay], daily && daily.day === todayDay ? daily : null);
+    row("./", "#" + (todayDay + 1), "Today", todayStatus, todayCls, !archive && !practice);
+    for (let d = todayDay - 1; d >= Math.max(0, todayDay - ARCHIVE_DAYS); d--) {
+      const [status, cls] = describe(stats.days[d], states[d] || (daily && daily.day === d ? daily : null));
+      row("?day=" + (d + 1), "#" + (d + 1), dateLabel(d), status, cls, archive && d === dayIndex);
+    }
+    body.append(el("p", "fine", "Play any hand from the last " + ARCHIVE_DAYS + " days. Archive hands never count toward your streak, but a day you missed is added to your stats the first time you finish it."), list);
+    if (todayDay === 0) body.append(el("p", "fine", "Past hands show up here starting tomorrow."));
+  }
+
   // ---------------------------------------------------------------------------
   // UI plumbing
   let toastTimer;
@@ -824,6 +906,7 @@
   function openModal(id) {
     document.querySelectorAll(".modal").forEach((m) => (m.hidden = true));
     if (id === "statsModal") renderStats();
+    if (id === "archiveModal") renderArchive();
     $(id).hidden = false;
   }
   document.querySelectorAll(".modal").forEach((m) => {
@@ -842,6 +925,7 @@
 
   $("helpBtn").addEventListener("click", () => openModal("helpModal"));
   $("statsBtn").addEventListener("click", () => openModal("statsModal"));
+  $("archiveBtn").addEventListener("click", () => openModal("archiveModal"));
   $("submitBtn").addEventListener("click", submit);
   // Easy Mode (win percentages). Turning it on during an unfinished daily
   // hand marks the hand as Easy Mode, so it asks first.
@@ -856,7 +940,7 @@
   }
   $("equityToggle").checked = false;
   $("equityToggle").addEventListener("change", (e) => {
-    const needsWarning = e.target.checked && !practice && state.status === "playing" && !state.easy;
+    const needsWarning = e.target.checked && !practice && !archive && state.status === "playing" && !state.easy;
     if (needsWarning) {
       e.target.checked = false;
       openModal("easyModal");

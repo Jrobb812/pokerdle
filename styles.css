@@ -45,6 +45,9 @@ body {
   letter-spacing: 0.5px;
 }
 .topbar h1 span { color: var(--gold); }
+.topbar h1 a { color: inherit; text-decoration: none; }
+.topbar-side { flex: 1; display: flex; gap: 8px; }
+.topbar-side.right { justify-content: flex-end; }
 .icon-btn {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -54,6 +57,9 @@ body {
   font-size: 17px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
 }
 .icon-btn:hover { border-color: var(--gold); }
 
@@ -364,6 +370,28 @@ main {
   cursor: pointer;
 }
 .streak-line.easy { color: var(--muted); font-size: 14px; }
+a.ghost-btn { display: inline-block; text-decoration: none; }
+
+.archive-list { display: grid; gap: 6px; margin-top: 12px; }
+.archive-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #2f3a34;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  text-decoration: none;
+}
+.archive-row:hover, .archive-row:focus-visible, .archive-row.current { border-color: var(--gold); }
+.archive-num { flex: none; width: 44px; font-weight: 800; color: var(--gold); }
+.archive-date { flex: 1; min-width: 0; }
+.archive-status { flex: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+.archive-status.won { color: var(--green); }
+.archive-status.lost { color: var(--red); }
+.archive-status.new { color: var(--text); }
+.archive-status.progress { color: var(--yellow); }
 
 /* Colorblind mode: orange = right card, blue = right suit, gray = wrong suit */
 .cb { display: none; }

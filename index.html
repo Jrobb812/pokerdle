@@ -20,9 +20,14 @@
 </head>
 <body>
   <header class="topbar">
-    <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
-    <h1>Poker<span>dle</span></h1>
-    <button class="icon-btn" id="statsBtn" aria-label="Statistics">▥</button>
+    <div class="topbar-side">
+      <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+    </div>
+    <h1><a href="./">Poker<span>dle</span></a></h1>
+    <div class="topbar-side right">
+      <button class="icon-btn" id="archiveBtn" aria-label="Archive" title="Archive"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
+      <button class="icon-btn" id="statsBtn" aria-label="Statistics">▥</button>
+    </div>
   </header>
 
   <main>
@@ -109,6 +114,7 @@
         <span class="switch" aria-hidden="true"></span>
         Colorblind mode
       </label>
+      <p>Missed a day? Open the <b>archive</b> (the calendar button) to play any hand from the last 30 days. Archive hands don't count toward your streak, but a day you missed is added to your stats.</p>
       <p class="fine">Hands come from public tournament reporting. A source link appears after you finish.</p>
       <p class="fine">Bugs or suggestions? Email <a href="mailto:pokerdledotnet@gmail.com?subject=Pokerdle%20feedback">pokerdledotnet@gmail.com</a>.</p>
     </div>
@@ -131,6 +137,14 @@
       <button class="close" data-close>×</button>
       <h2>Statistics</h2>
       <div id="statsBody"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="archiveModal" hidden>
+    <div class="modal-card">
+      <button class="close" data-close>×</button>
+      <h2>Archive</h2>
+      <div id="archiveBody"></div>
     </div>
   </div>
 
